@@ -1,6 +1,6 @@
 shader_type particles;
 uniform sampler2D fluid_data;
-uniform vec2 scale = vec2(.5, .5);
+uniform vec2 scale = vec2(.1, .1);
 
 void process() {
 	ivec2 pos_image_size = textureSize(fluid_data, 0);

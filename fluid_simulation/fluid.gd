@@ -1,7 +1,7 @@
 extends Node2D
 
 @export var velocity_damping: float = 1
-@export var interaction_radius: float = 120
+@export var interaction_radius: float = 10
 @export var k: float = 1
 @export var k_near: float = 6
 @export var rest_density: float = 5;
@@ -13,7 +13,7 @@ var VELOCITY_BINDING: int = 2
 var FLUID_DATA_BINDING: int = 3
 var PARAMS_BINDING: int = 4
 
-var NUM_PARTICLES: int = 600
+var NUM_PARTICLES: int = 3000
 
 var IMAGE_SIZE = int(ceil(sqrt(NUM_PARTICLES)))
 

@@ -5,28 +5,65 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 #include "shared_data.glsl"
 
-void collideWithWorldBoundary(inout vec2 my_pos, inout vec2 my_prev_pos, inout vec2 my_vel) {
-    // float anti_stick = params.interaction_radius * length(my_pos) * params.delta_time * 1;
-    float anti_stick = 0.05 * params.delta_time;
-    if (my_pos.x < 0) {
-        my_pos.x = 0;
-        my_prev_pos.x = -anti_stick;
-    }
-    if (my_pos.y < 0) {
-        my_pos.y = 0;
-        my_prev_pos.y = -anti_stick;
-    }
-    if (my_pos.x >= params.viewport_x) {
-        my_pos.x = params.viewport_x;
-        my_prev_pos.x = params.viewport_x + anti_stick;
-    }
-    if (my_pos.y >= params.viewport_y) {
-        my_pos.y = params.viewport_y;
-        my_prev_pos.y = params.viewport_y + anti_stick;
-    }
-}
+// void collideWithWorldBoundary(int my_index) {
+//     vec2 my_pos = fluid_pos.data[my_index];
 
-void applyGravity(inout vec2 my_vel, vec2 my_pos) {
+//     // float anti_stick = params.interaction_radius * length(my_pos) * params.delta_time * 1;
+//     float anti_stick = 2;
+//     float offset = 50;
+//     if (my_pos.x < offset) {
+//         fluid_pos.data[my_index].x = offset;
+//         predicted_pos.data[my_index].x = offset - anti_stick;
+//     }
+//     if (my_pos.y < offset) {
+//         fluid_pos.data[my_index].y = offset;
+//         predicted_pos.data[my_index].y = offset- anti_stick;
+//     }
+//     if (my_pos.x >= params.viewport_x - offset) {
+//         fluid_pos.data[my_index].x = params.viewport_x - offset;
+//         predicted_pos.data[my_index].x = params.viewport_x - offset + anti_stick;
+//     }
+//     if (my_pos.y >= params.viewport_y - offset) {
+//         fluid_pos.data[my_index].y = params.viewport_y - offset;
+//         predicted_pos.data[my_index].y = params.viewport_y - offset + anti_stick;
+//     }
+// }
+
+void collideWithWorldBoundary(int my_index) {
+    float offset = 5;
+    float boundaryMul = 0.5 * params.delta_time * params.delta_time;
+    float boundaryMinX = offset;
+    float boundaryMaxX = params.viewport_x - offset;
+    float boundaryMinY = offset;
+    float boundaryMaxY = params.viewport_y - offset;
+
+    float kWallStickiness = 0.5;
+    float kWallStickDist = 2;
+    float stickMinX = boundaryMinX + kWallStickDist;
+    float stickMaxX = boundaryMaxX - kWallStickDist;
+    float stickMinY = boundaryMinY + kWallStickDist;
+    float stickMaxY = boundaryMaxY - kWallStickDist;
+
+
+    vec2 my_pos = fluid_pos.data[my_index];
+    if (my_pos.x < boundaryMinX) {
+        fluid_pos.data[my_index].x += boundaryMul * (boundaryMinX - my_pos.x);
+    } else if (my_pos.x > boundaryMaxX) {
+        fluid_pos.data[my_index].x += boundaryMul * (boundaryMaxX - my_pos.x);
+    }
+
+    if (my_pos.y < boundaryMinY) {
+        fluid_pos.data[my_index].y += boundaryMul * (boundaryMinY - my_pos.y);
+    } else if (my_pos.y > boundaryMaxY) {
+        fluid_pos.data[my_index].y += boundaryMul * (boundaryMaxY - my_pos.y);
+    }
+  }
+
+
+void applyGravity(int index) {
+    vec2 my_pos = fluid_pos.data[index];
+    vec2 my_vel = fluid_vel.data[index];
+
     vec2 gravityAccel = vec2(0, params.gravity);
     int interactionInputRadius = 100;
     float inputStrength = 10;
@@ -45,26 +82,28 @@ void applyGravity(inout vec2 my_vel, vec2 my_pos) {
 			float gravityWeight = 1 - (centreT * inputStrength);
 			vec2 accel = gravityAccel * gravityWeight + dirToCentre * centreT * inputStrength;
 			accel -= my_vel * centreT;
-			my_vel += params.delta_time * accel;
+			fluid_vel.data[index] += params.delta_time * accel;
          return;
 		}
 	}
-   my_vel += params.delta_time * gravityAccel;    
+    fluid_vel.data[index] += params.delta_time * gravityAccel;    
 }
 
-void predictPosition(inout vec2 my_pos, inout vec2 my_prev_pos, vec2 my_vel) {
-    my_prev_pos = vec2(my_pos.x, my_pos.y);
-    my_pos += my_vel * params.delta_time * params.velocity_damping;
+void predictPosition(int my_index) {
+    vec2 my_pos = fluid_pos.data[my_index];
+    vec2 my_vel = fluid_vel.data[my_index];
+
+    predicted_pos.data[my_index] = vec2(my_pos.x, my_pos.y);
+    fluid_pos.data[my_index] += my_vel * params.delta_time * params.velocity_damping;
 }
 
-void computeNextVelocity(inout vec2 my_vel, vec2 my_pos, vec2 my_prev_pos) {
-   float max_vel = 100;
-   vec2 next_vel = (my_pos - my_prev_pos) / params.delta_time;
-   if (length(next_vel) < max_vel)
-      my_vel = next_vel;
+void computeNextVelocity(int my_index) {
+    fluid_vel.data[my_index] = (fluid_pos.data[my_index] - predicted_pos.data[my_index]) / params.delta_time;
 }
 
-void doubleDensityRelaxation(inout vec2 my_pos, int my_index) {
+void doubleDensityRelaxation(int my_index) {
+    vec2 my_pos = fluid_pos.data[my_index];
+
     float interaction_radius = params.interaction_radius;
     float k = params.k;
     float k_near = params.k_near;
@@ -94,7 +133,7 @@ void doubleDensityRelaxation(inout vec2 my_pos, int my_index) {
         vec2 rij = fluid_pos.data[i] - my_pos;
         float q = length(rij) / interaction_radius;
         if (q < 1) {
-            rij = normalize(rij);
+            rij = rij / length(rij);
             float displacement_term = params.delta_time * params.delta_time * (pressure * (1 - q) + pressure_near * (1 - q) * (1 - q));
             vec2 d = rij * displacement_term;
 
@@ -102,32 +141,31 @@ void doubleDensityRelaxation(inout vec2 my_pos, int my_index) {
             particle_a_displacement -= d * 0.5;
         }
     }
-    my_pos += particle_a_displacement;
+    fluid_pos.data[my_index] += particle_a_displacement;
 }
 
 void main() {
     int my_index = int(gl_GlobalInvocationID.x);
     if(my_index >= params.num_particles) return;
 
+    // vec2 my_pos = fluid_pos.data[my_index];
+    // vec2 my_prev_pos = predicted_pos.data[my_index];
+    // vec2 my_vel = fluid_vel.data[my_index];
+
+    applyGravity(my_index);
+    barrier();
+    predictPosition(my_index);
+    barrier();
+    //doubleDensityRelaxationV3(my_pos, my_index);
+    doubleDensityRelaxation(my_index);
+    barrier();
+    collideWithWorldBoundary(my_index);
+    barrier();
+    computeNextVelocity(my_index);
+    barrier();
+
     vec2 my_pos = fluid_pos.data[my_index];
-    vec2 my_prev_pos = predicted_pos.data[my_index];
-    vec2 my_vel = fluid_vel.data[my_index];
 
-    applyGravity(my_vel, my_pos);
-    barrier();
-    predictPosition(my_pos, my_prev_pos, my_vel);
-    barrier();
-    doubleDensityRelaxation(my_pos, my_index);
-    barrier();
-    collideWithWorldBoundary(my_pos, my_prev_pos, my_vel);
-    barrier();
-    computeNextVelocity(my_vel, my_pos, my_prev_pos);
-    barrier();
-
-    fluid_vel.data[my_index] = my_vel;
-    fluid_pos.data[my_index] = my_pos;
-    predicted_pos.data[my_index] = my_prev_pos;
-    
     ivec2 pixel_pos = ivec2(int(mod(my_index, params.image_size)), int(my_index / params.image_size));
     imageStore(fluid_data, pixel_pos,vec4(my_pos.x, my_pos.y, 0, 0));
 }

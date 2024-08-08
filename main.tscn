@@ -2,17 +2,23 @@
 
 [ext_resource type="Script" path="res://fluid_simulation/fluid.gd" id="1_d5bfl"]
 [ext_resource type="Shader" path="res://fluid_simulation/shaders/fluid_particle.gdshader" id="2_nlpg7"]
-[ext_resource type="Texture2D" uid="uid://mfbhcmbqoeud" path="res://small-dot.png" id="2_u7lgj"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0ghh0"]
 shader = ExtResource("2_nlpg7")
 shader_parameter/scale = Vector2(0.2, 0.8)
 
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_5vsfd"]
+load_path = "res://.godot/imported/blue-dot.webp-3a3b4e9b9024590f5d54cfe32c3934c9.ctex"
+
 [node name="Main" type="Node2D"]
 
 [node name="Fluid" type="Node2D" parent="."]
 script = ExtResource("1_d5bfl")
+interaction_radius = 50.0
+k = 3.0
+rest_density = 6.0
+gravity = 5.0
 
 [node name="FluidParticles" type="GPUParticles2D" parent="Fluid"]
 process_material = SubResource("ShaderMaterial_0ghh0")
-texture = ExtResource("2_u7lgj")
+texture = SubResource("CompressedTexture2D_5vsfd")
