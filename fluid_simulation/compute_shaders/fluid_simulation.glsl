@@ -5,29 +5,6 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 #include "shared_data.glsl"
 
-// void collideWithWorldBoundary(int my_index) {
-//     vec2 my_pos = fluid_pos.data[my_index];
-
-//     // float anti_stick = params.interaction_radius * length(my_pos) * params.delta_time * 1;
-//     float anti_stick = 2;
-//     float offset = 50;
-//     if (my_pos.x < offset) {
-//         fluid_pos.data[my_index].x = offset;
-//         predicted_pos.data[my_index].x = offset - anti_stick;
-//     }
-//     if (my_pos.y < offset) {
-//         fluid_pos.data[my_index].y = offset;
-//         predicted_pos.data[my_index].y = offset- anti_stick;
-//     }
-//     if (my_pos.x >= params.viewport_x - offset) {
-//         fluid_pos.data[my_index].x = params.viewport_x - offset;
-//         predicted_pos.data[my_index].x = params.viewport_x - offset + anti_stick;
-//     }
-//     if (my_pos.y >= params.viewport_y - offset) {
-//         fluid_pos.data[my_index].y = params.viewport_y - offset;
-//         predicted_pos.data[my_index].y = params.viewport_y - offset + anti_stick;
-//     }
-// }
 
 void collideWithWorldBoundary(int my_index) {
     float offset = 5;
@@ -144,6 +121,34 @@ void doubleDensityRelaxation(int my_index) {
     fluid_pos.data[my_index] += particle_a_displacement;
 }
 
+void applyViscosity(int my_index) {
+    float sigma = params.viscous_sigma;
+    float beta = params.viscous_beta;
+
+    vec2 my_pos = fluid_pos.data[my_index];
+    vec2 my_vel = fluid_vel.data[my_index];
+
+    for(int i = 0; i < params.num_particles; i++) {
+        if (i == my_index) continue;
+        vec2 neighbour_pos = fluid_pos.data[i];
+        vec2 neighbour_vel = fluid_vel.data[i];
+
+        vec2 rij = neighbour_pos - my_pos;
+        float q = length(rij) / params.interaction_radius;
+
+        if (q < 1) {
+            rij = normalize(rij);
+            float u = dot(my_vel - neighbour_vel, rij);
+
+            if (u > 0) {
+                float ITerm = params.delta_time * (1 - q) * (sigma * u + beta * u * u);
+                vec2 I = rij * ITerm;
+                fluid_vel.data[my_index] -=  I * 0.5;
+            }
+        }
+    }
+}
+
 void main() {
     int my_index = int(gl_GlobalInvocationID.x);
     if(my_index >= params.num_particles) return;
@@ -153,6 +158,8 @@ void main() {
     // vec2 my_vel = fluid_vel.data[my_index];
 
     applyGravity(my_index);
+    barrier();
+    applyViscosity(my_index);
     barrier();
     predictPosition(my_index);
     barrier();

@@ -6,6 +6,8 @@ extends Node2D
 @export var k_near: float = 6
 @export var rest_density: float = 6;
 @export var gravity: float = 4
+@export var viscous_beta: float = 0;
+@export var viscous_sigma: float = 1;
 
 var POSITIONS_BINDING: int = 0
 var PREVIOUS_POSITIONS_BINDING: int = 1
@@ -29,22 +31,6 @@ var densities_buffer: RID
 var rd : RenderingDevice
 var fluid_compute_shader : RID
 var fluid_pipeline : RID
-
-var gravity_shader: RID
-var gravity_pipeline: RID
-
-var calculate_velocity_shader: RID
-var calculate_velocity_pipeline: RID
-
-var collide_with_world_boundary_shader: RID
-var collide_with_world_boudary_pipeline: RID
-
-var double_density_relaxation_shader: RID
-var double_density_relaxation_pipeline: RID
-
-var predict_position_shader: RID
-var predict_position_pipeline: RID
-
 
 var bindings: Array = []
 var params_buffer: RID
@@ -153,6 +139,8 @@ func _generate_parameter_buffer(delta):
 		mouse_down,
 		get_viewport().get_mouse_position().x,
 		get_viewport().get_mouse_position().y,
+		viscous_beta,
+		viscous_sigma,
 	]).to_byte_array()
 	return rd.storage_buffer_create(params_buffer_bytes.size(), params_buffer_bytes)
 
