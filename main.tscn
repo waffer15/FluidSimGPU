@@ -14,10 +14,6 @@ load_path = "res://.godot/imported/blue-dot.webp-3a3b4e9b9024590f5d54cfe32c3934c
 
 [node name="Fluid" type="Node2D" parent="."]
 script = ExtResource("1_d5bfl")
-interaction_radius = 50.0
-k = 3.0
-rest_density = 6.0
-gravity = 5.0
 
 [node name="FluidParticles" type="GPUParticles2D" parent="Fluid"]
 process_material = SubResource("ShaderMaterial_0ghh0")

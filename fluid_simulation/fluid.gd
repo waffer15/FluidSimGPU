@@ -1,10 +1,10 @@
 extends Node2D
 
 @export var velocity_damping: float = 1
-@export var interaction_radius: float = 10
-@export var k: float = 1
+@export var interaction_radius: float = 50
+@export var k: float = 3
 @export var k_near: float = 6
-@export var rest_density: float = 5;
+@export var rest_density: float = 6;
 @export var gravity: float = 4
 
 var POSITIONS_BINDING: int = 0
