@@ -1,7 +1,7 @@
 extends Node2D
 
 @export var velocity_damping: float = 1
-@export var interaction_radius: float = 50
+@export var interaction_radius: float = 100
 @export var k: float = 3
 @export var k_near: float = 6
 @export var rest_density: float = 6;
@@ -15,17 +15,22 @@ var VELOCITY_BINDING: int = 2
 var FLUID_DATA_BINDING: int = 3
 var PARAMS_BINDING: int = 4
 
-var NUM_PARTICLES: int = 3000
+var NUM_PARTICLES: int = 25
+var MAX_PARTICLES: int = 10000
 
-var IMAGE_SIZE = int(ceil(sqrt(NUM_PARTICLES)))
+var IMAGE_SIZE = int(ceil(sqrt(MAX_PARTICLES)))
 
 var fluid_data: Image
 var fluid_data_texture: ImageTexture
 var fluid_data_buffer : RID
 var fluid_pos_buffer: RID
+var fluid_pos_uniform: RDUniform
 var previous_pos_buffer: RID
+var previous_pos_uniform: RDUniform
 var fluid_vel_buffer: RID
+var fluid_vel_uniform: RDUniform
 var densities_buffer: RID
+var fluid_data_buffer_uniform: RDUniform
 
 # -------- Shaders ------
 var rd : RenderingDevice
@@ -49,7 +54,7 @@ func _ready() -> void:
 	_generate_fluid()
 	_setup_compute_shader()
 	_update_fluid_particles(0)
-	$FluidParticles.amount = NUM_PARTICLES
+	$FluidParticles.amount = MAX_PARTICLES
 	$FluidParticles.process_material.set_shader_parameter("fluid_data", fluid_data_texture)
 
 func _generate_fluid():
@@ -85,18 +90,18 @@ func _setup_compute_shader() -> void:
 	fmt.usage_bits = RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT | RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 
 	fluid_pos_buffer = _generate_vec2_buffer(fluid_pos)
-	var fluid_pos_uniform = _generate_uniform(fluid_pos_buffer, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, POSITIONS_BINDING)
+	fluid_pos_uniform = _generate_uniform(fluid_pos_buffer, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, POSITIONS_BINDING)
 	
 	previous_pos_buffer = _generate_vec2_buffer(predicted_pos)
-	var previous_pos_uniform = _generate_uniform(previous_pos_buffer, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, PREVIOUS_POSITIONS_BINDING)
+	previous_pos_uniform = _generate_uniform(previous_pos_buffer, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, PREVIOUS_POSITIONS_BINDING)
 
 	fluid_vel_buffer = _generate_vec2_buffer(fluid_vel)
-	var fluid_vel_uniform = _generate_uniform(fluid_vel_buffer, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, VELOCITY_BINDING)
+	fluid_vel_uniform = _generate_uniform(fluid_vel_buffer, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, VELOCITY_BINDING)
 
 	var view := RDTextureView.new()
 	fluid_data_buffer = rd.texture_create(fmt, view, [fluid_data.get_data()])
 	
-	var fluid_data_buffer_uniform = _generate_uniform(fluid_data_buffer, RenderingDevice.UNIFORM_TYPE_IMAGE, FLUID_DATA_BINDING)
+	fluid_data_buffer_uniform = _generate_uniform(fluid_data_buffer, RenderingDevice.UNIFORM_TYPE_IMAGE, FLUID_DATA_BINDING)
 
 	params_buffer = _generate_parameter_buffer(0)
 	params_uniform = _generate_uniform(params_buffer, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, PARAMS_BINDING)
@@ -114,8 +119,54 @@ func _update_data_texture():
 	fluid_data.set_data(IMAGE_SIZE, IMAGE_SIZE, false, Image.FORMAT_RGBAH, fluid_data_image_data)
 	fluid_data_texture.update(fluid_data)
 
+func _bytes_to_packed_vector2_array(bytes: PackedByteArray) -> PackedVector2Array:
+	if bytes.size() % 8 != 0:
+		return []
+	var result: PackedVector2Array = []
+	var count: int = bytes.size() / 8.0
+	result.resize(count)
+	for i in count:
+		result[i] = Vector2(bytes.decode_float(i * 8), bytes.decode_float(i * 8 + 4))
+	return result
+
+func _spawn_particles():
+	if NUM_PARTICLES > MAX_PARTICLES:
+		return
+
+	var fluid_pos_buffer_data: PackedVector2Array = _bytes_to_packed_vector2_array(rd.buffer_get_data(fluid_pos_buffer))
+	var fluid_vel_buffer_data: PackedVector2Array = _bytes_to_packed_vector2_array(rd.buffer_get_data(fluid_vel_buffer))
+	var previous_pos_buffer_data: PackedVector2Array = _bytes_to_packed_vector2_array(rd.buffer_get_data(previous_pos_buffer))
+	
+	rd.free_rid(fluid_pos_buffer)
+	rd.free_rid(fluid_vel_buffer)
+	rd.free_rid(previous_pos_buffer)
+	
+	# clear all uniforms
+	fluid_pos_uniform.clear_ids()
+	fluid_vel_uniform.clear_ids()
+	previous_pos_uniform.clear_ids()
+	
+	for i in range(-2, 2, 1):
+		NUM_PARTICLES += 1
+		var pos = Vector2(get_viewport().get_mouse_position().x + i * 5, get_viewport().get_mouse_position().y)
+		fluid_pos_buffer_data.append(pos)
+		previous_pos_buffer_data.append(pos)
+		fluid_vel_buffer_data.append(Vector2.ZERO)
+	
+	fluid_pos_buffer = _generate_vec2_buffer(fluid_pos_buffer_data)
+	fluid_pos_uniform.add_id(fluid_pos_buffer)
+	
+	fluid_vel_buffer = _generate_vec2_buffer(fluid_vel_buffer_data)
+	fluid_vel_uniform.add_id(fluid_vel_buffer)
+	
+	previous_pos_buffer = _generate_vec2_buffer(previous_pos_buffer_data)
+	previous_pos_uniform.add_id(previous_pos_buffer)
+
 func _update_fluid_particles(delta):
+	if mouse_down:
+		_spawn_particles()
 	rd.free_rid(params_buffer)
+	
 	params_buffer = _generate_parameter_buffer(delta)
 	params_uniform.clear_ids()
 	params_uniform.add_id(params_buffer)
@@ -136,7 +187,7 @@ func _generate_parameter_buffer(delta):
 		k_near,
 		rest_density,
 		gravity,
-		mouse_down,
+		0,
 		get_viewport().get_mouse_position().x,
 		get_viewport().get_mouse_position().y,
 		viscous_beta,
