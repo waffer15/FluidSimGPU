@@ -149,21 +149,47 @@ void applyViscosity(int my_index) {
     }
 }
 
+void mixColors(int my_index) {
+    vec4 my_color = particle_colors.data[my_index];
+    vec2 my_pos = fluid_pos.data[my_index];
+    float interaction_radius = params.interaction_radius;
+    float color_mix_factor = 0.05; // Adjust the speed of color mixing here
+
+    vec4 accumulated_color = vec4(0.0);
+    float neighbor_count = 0.0;
+
+    for(int i = 0; i < params.num_particles; i++) {
+        if (i == my_index) continue;
+
+        vec2 neighbor_pos = fluid_pos.data[i];
+        float d = length(neighbor_pos - my_pos);
+
+        if (d < interaction_radius) {
+            vec4 neighbor_color = particle_colors.data[i];
+            float distance_factor = 1.0 - (d / interaction_radius); // Closer particles influence more
+            accumulated_color += neighbor_color * distance_factor;
+            neighbor_count += distance_factor;
+        }
+    }
+
+    if (neighbor_count > 0.0) {
+        vec4 average_neighbor_color = accumulated_color / neighbor_count;
+        particle_colors.data[my_index] = mix(my_color, average_neighbor_color, color_mix_factor);
+    }
+}
+
 void main() {
     int my_index = int(gl_GlobalInvocationID.x);
     if(my_index >= params.num_particles) return;
-
-    // vec2 my_pos = fluid_pos.data[my_index];
-    // vec2 my_prev_pos = predicted_pos.data[my_index];
-    // vec2 my_vel = fluid_vel.data[my_index];
 
     applyGravity(my_index);
     barrier();
     applyViscosity(my_index);
     barrier();
+    mixColors(my_index);
+    barrier();
     predictPosition(my_index);
     barrier();
-    //doubleDensityRelaxationV3(my_pos, my_index);
     doubleDensityRelaxation(my_index);
     barrier();
     collideWithWorldBoundary(my_index);
@@ -174,5 +200,8 @@ void main() {
     vec2 my_pos = fluid_pos.data[my_index];
 
     ivec2 pixel_pos = ivec2(int(mod(my_index, params.image_size)), int(my_index / params.image_size));
-    imageStore(fluid_data, pixel_pos,vec4(my_pos.x, my_pos.y, 0, 0));
+    imageStore(fluid_data, pixel_pos, vec4(my_pos.x, my_pos.y, 0, 0));
+
+    vec4 my_color = particle_colors.data[my_index];
+    imageStore(fluid_color, pixel_pos, my_color);
 }

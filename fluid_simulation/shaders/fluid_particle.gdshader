@@ -1,5 +1,6 @@
 shader_type particles;
 uniform sampler2D fluid_data;
+uniform sampler2D fluid_color;
 uniform vec2 scale = vec2(.1, .1);
 
 void process() {
@@ -12,8 +13,11 @@ void process() {
 	mat2 scale_rot_mat = mat2(vec2(cos(fluid_pos.b), sin(fluid_pos.b)), // First column
 							  vec2(-sin(fluid_pos.b), cos(fluid_pos.b))); // Sec
 	
+	vec4 particle_color = texelFetch(fluid_color, texel_pos, 0);
+	
+	
 	scale_rot_mat[0] *= scale.x;
 	scale_rot_mat[1] *= scale.y;
 	TRANSFORM[3].xy = vec2(fluid_pos.r, fluid_pos.g);
-	COLOR = vec4(1, 1, 1, 1);
+	COLOR = vec4(particle_color.rgb, 1);
 }

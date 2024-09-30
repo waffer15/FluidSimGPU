@@ -30,3 +30,9 @@ layout(set = 0, binding = 4, std430) restrict buffer Params{
    float viscous_beta;
    float viscous_sigma;
 } params;
+
+layout(set = 0, binding = 5, std430) restrict buffer Color {
+    vec4 data[];
+} particle_colors;
+
+layout(rgba16f, binding = 6) uniform image2D fluid_color;
