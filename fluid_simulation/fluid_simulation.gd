@@ -10,23 +10,28 @@ extends Node2D
 @export var viscous_beta: float = 0;
 @export var viscous_sigma: float = 1;
 
-var POSITIONS_BINDING: int = 0
-var PREVIOUS_POSITIONS_BINDING: int = 1
-var VELOCITY_BINDING: int = 2
-var FLUID_DATA_BINDING: int = 3
-var PARAMS_BINDING: int = 4
-var COLOR_BINDING: int = 5
-var PARTICLE_COLOR_DATA_BINDING: int = 6
+const POSITIONS_BINDING: int = 0
+const PREVIOUS_POSITIONS_BINDING: int = 1
+const VELOCITY_BINDING: int = 2
+const FLUID_DATA_BINDING: int = 3
+const PARAMS_BINDING: int = 4
+const COLOR_BINDING: int = 5
+const PARTICLE_COLOR_DATA_BINDING: int = 6
+const MUG_COLLIDER_BINDING: int = 7
 
-var NUM_PARTICLES: int = 2000
+var NUM_PARTICLES: int = 1000
 var MAX_PARTICLES: int = 10000
 
 var IMAGE_SIZE = int(ceil(sqrt(MAX_PARTICLES)))
+
+@onready var mug_collider: CollisionPolygon2D = %MugCollider
 
 var particle_positions: ParticlePropertyVec2
 var particle_velocities: ParticlePropertyVec2
 var particle_previous_positions: ParticlePropertyVec2
 var particle_color: ParticlePropertyVec4
+
+var mug_verticies: ParticlePropertyVec2
 
 var fluid_data: Image
 var fluid_data_texture: ImageTexture
@@ -107,6 +112,12 @@ func _setup_compute_shader() -> void:
 	particle_previous_positions = ParticlePropertyVec2.new(rd, predicted_pos, PREVIOUS_POSITIONS_BINDING)
 	particle_color = ParticlePropertyVec4.new(rd, fluid_color, COLOR_BINDING)
 	
+	var polygon: Array[Vector2] = []
+	for v in mug_collider.polygon:
+		polygon.append(v + mug_collider.get_parent().position)
+
+	var mug_particle_property = ParticlePropertyVec2.new(rd, polygon, MUG_COLLIDER_BINDING)
+	
 	var view := RDTextureView.new()
 	fluid_data_buffer = rd.texture_create(fmt, view, [fluid_data.get_data()])
 	fluid_data_buffer_uniform = _generate_uniform(fluid_data_buffer, RenderingDevice.UNIFORM_TYPE_IMAGE, FLUID_DATA_BINDING)
@@ -125,6 +136,7 @@ func _setup_compute_shader() -> void:
 		params_uniform,
 		particle_color.uniform,
 		particle_color_data_uniform,
+		mug_particle_property.uniform,
 	]
 
 func _update_data_texture():

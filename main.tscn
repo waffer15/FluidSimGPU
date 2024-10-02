@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://cvc1whfj3g5iv"]
 
-[ext_resource type="Script" path="res://fluid_simulation/fluid.gd" id="1_d5bfl"]
+[ext_resource type="Script" path="res://fluid_simulation/fluid_simulation.gd" id="1_d5bfl"]
 [ext_resource type="Shader" path="res://fluid_simulation/shaders/fluid_particle.gdshader" id="2_nlpg7"]
 [ext_resource type="Texture2D" uid="uid://cg0ws8d7uabph" path="res://white-dot.png" id="3_rkd3r"]
 
@@ -12,9 +12,10 @@ shader_parameter/scale = Vector2(0.2, 0.8)
 
 [node name="Fluid" type="Node2D" parent="."]
 script = ExtResource("1_d5bfl")
-interaction_radius = 50.0
-rest_density = 15.0
-viscous_sigma = 0.1
+interaction_radius = 30.0
+k = 4.0
+k_near = 10.0
+viscous_sigma = 0.9
 
 [node name="FluidParticles" type="GPUParticles2D" parent="Fluid"]
 process_material = SubResource("ShaderMaterial_0ghh0")
@@ -23,6 +24,7 @@ texture = ExtResource("3_rkd3r")
 [node name="RigidBody2D" type="RigidBody2D" parent="."]
 position = Vector2(531, 464)
 
-[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="RigidBody2D"]
-position = Vector2(-2, 0)
-polygon = PackedVector2Array(-33, -45, -24, 14, 27, 14, 33, -45, 25, 9, 22, 12, -20, 12, -23, 8)
+[node name="MugCollider" type="CollisionPolygon2D" parent="RigidBody2D"]
+unique_name_in_owner = true
+position = Vector2(-41, 48)
+polygon = PackedVector2Array(-136, -185, -194, 117, 184, 120, 137, -183, 145, -77, 132, 103, -153, 102, -148, -68)

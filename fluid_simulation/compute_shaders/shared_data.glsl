@@ -36,3 +36,7 @@ layout(set = 0, binding = 5, std430) restrict buffer Color {
 } particle_colors;
 
 layout(rgba16f, binding = 6) uniform image2D fluid_color;
+
+layout(set = 0, binding = 7, std430) restrict buffer MugCollider {
+    vec2 data[];
+} mug_collider;

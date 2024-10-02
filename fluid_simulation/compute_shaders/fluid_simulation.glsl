@@ -75,7 +75,14 @@ void predictPosition(int my_index) {
 }
 
 void computeNextVelocity(int my_index) {
-    fluid_vel.data[my_index] = (fluid_pos.data[my_index] - predicted_pos.data[my_index]) / params.delta_time;
+    float max_v = 50;
+
+    vec2 v = (fluid_pos.data[my_index] - predicted_pos.data[my_index]) / params.delta_time;
+    if (length(v) > max_v)
+        fluid_vel.data[my_index] = normalize(v) * max_v;
+    else
+        fluid_vel.data[my_index] = v;
+    // fluid_vel.data[my_index] = (fluid_pos.data[my_index] - predicted_pos.data[my_index]) / params.delta_time;
 }
 
 void doubleDensityRelaxation(int my_index) {
@@ -178,6 +185,59 @@ void mixColors(int my_index) {
     }
 }
 
+void collideWithMugCollider(int my_index) {
+    vec2 my_pos = fluid_pos.data[my_index];
+    vec2 my_vel = fluid_vel.data[my_index];
+
+    // Define the particle radius; adjust as needed
+    float particle_radius = params.interaction_radius * 0.5;
+
+    // Get the number of vertices in the mug collider
+    int num_vertices = 8;
+
+    // Loop over each edge of the mug collider polygon
+    for(int i = 0; i < num_vertices; i++) {
+        vec2 A = mug_collider.data[i];
+        vec2 B = mug_collider.data[(i + 1) % num_vertices]; // Wrap around to first vertex
+
+        // Compute the vector from A to B and from A to the particle
+        vec2 AB = B - A;
+        vec2 AP = my_pos - A;
+
+        // Project AP onto AB to find the closest point on the edge
+        float t = dot(AP, AB) / dot(AB, AB);
+        t = clamp(t, 0.0, 1.0);
+
+        vec2 closest_point = A + t * AB;
+
+        // Compute the vector from the closest point to the particle
+        vec2 distance_vec = my_pos - closest_point;
+        float d = length(distance_vec);
+
+        // Check for collision
+        if(d < particle_radius) {
+            // Compute penetration depth
+            float penetration = particle_radius - d;
+
+            // Compute collision normal
+            vec2 collision_normal = normalize(distance_vec);
+
+            // Adjust position to resolve penetration
+            my_pos += collision_normal * penetration;
+
+            // Reflect velocity (simple collision response)
+            my_vel = my_vel - 2.0 * dot(my_vel, collision_normal) * collision_normal;
+
+            // Optionally, apply damping or friction here
+        }
+    }
+
+    // Update the particle's position and velocity
+    fluid_pos.data[my_index] = my_pos;
+    fluid_vel.data[my_index] = my_vel;
+}
+
+
 void main() {
     int my_index = int(gl_GlobalInvocationID.x);
     if(my_index >= params.num_particles) return;
@@ -193,6 +253,8 @@ void main() {
     doubleDensityRelaxation(my_index);
     barrier();
     collideWithWorldBoundary(my_index);
+    barrier();
+    collideWithMugCollider(my_index);
     barrier();
     computeNextVelocity(my_index);
     barrier();
