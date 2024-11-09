@@ -1,4 +1,4 @@
-class_name ParticlePropertyVec4
+class_name FluidPropertyVec4
 
 
 var _rd: RenderingDevice
@@ -43,7 +43,7 @@ func _bytes_to_packed_vector4_array(bytes: PackedByteArray) -> PackedVector4Arra
 
 func _generate_vec4_buffer(data) -> RID:
 	var data_buffer_bytes := PackedVector4Array(data).to_byte_array()
-	var data_buffer = _rd.storage_buffer_create(data_buffer_bytes.size(), data_buffer_bytes)
+	var data_buffer = _rd.storage_buffer_create(max(data_buffer_bytes.size(), 1), data_buffer_bytes)
 	return data_buffer
 
 func _generate_uniform(data_buffer, type, binding):

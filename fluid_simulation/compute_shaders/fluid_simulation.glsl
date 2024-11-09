@@ -186,14 +186,42 @@ void mixColors(int my_index) {
 }
 
 void collideWithMugCollider(int my_index) {
+    // float offset = 5;
+    // float boundaryMul = 0.5 * params.delta_time * params.delta_time;
+    // float boundaryMinX = offset;
+    // float boundaryMaxX = params.viewport_x - offset;
+    // float boundaryMinY = offset;
+    // float boundaryMaxY = params.viewport_y - offset;
+
+    // float kWallStickiness = 0.5;
+    // float kWallStickDist = 2;
+    // float stickMinX = boundaryMinX + kWallStickDist;
+    // float stickMaxX = boundaryMaxX - kWallStickDist;
+    // float stickMinY = boundaryMinY + kWallStickDist;
+    // float stickMaxY = boundaryMaxY - kWallStickDist;
+
+
+    // vec2 my_pos = fluid_pos.data[my_index];
+    // if (my_pos.x < boundaryMinX) {
+    //     fluid_pos.data[my_index].x += boundaryMul * (boundaryMinX - my_pos.x);
+    // } else if (my_pos.x > boundaryMaxX) {
+    //     fluid_pos.data[my_index].x += boundaryMul * (boundaryMaxX - my_pos.x);
+    // }
+
+    // if (my_pos.y < boundaryMinY) {
+    //     fluid_pos.data[my_index].y += boundaryMul * (boundaryMinY - my_pos.y);
+    // } else if (my_pos.y > boundaryMaxY) {
+    //     fluid_pos.data[my_index].y += boundaryMul * (boundaryMaxY - my_pos.y);
+    // }
+
     vec2 my_pos = fluid_pos.data[my_index];
     vec2 my_vel = fluid_vel.data[my_index];
 
     // Define the particle radius; adjust as needed
-    float particle_radius = params.interaction_radius * 0.5;
+    float particle_radius = params.interaction_radius;
 
     // Get the number of vertices in the mug collider
-    int num_vertices = 8;
+    int num_vertices = 0;
 
     // Loop over each edge of the mug collider polygon
     for(int i = 0; i < num_vertices; i++) {
@@ -254,8 +282,8 @@ void main() {
     barrier();
     collideWithWorldBoundary(my_index);
     barrier();
-    collideWithMugCollider(my_index);
-    barrier();
+    // collideWithMugCollider(my_index);
+    // barrier();
     computeNextVelocity(my_index);
     barrier();
 

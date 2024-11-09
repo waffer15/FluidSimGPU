@@ -19,19 +19,20 @@ const COLOR_BINDING: int = 5
 const PARTICLE_COLOR_DATA_BINDING: int = 6
 const MUG_COLLIDER_BINDING: int = 7
 
-var NUM_PARTICLES: int = 1000
+var NUM_PARTICLES: int = 0
 var MAX_PARTICLES: int = 10000
 
 var IMAGE_SIZE = int(ceil(sqrt(MAX_PARTICLES)))
 
 @onready var mug_collider: CollisionPolygon2D = %MugCollider
 
-var particle_positions: ParticlePropertyVec2
-var particle_velocities: ParticlePropertyVec2
-var particle_previous_positions: ParticlePropertyVec2
-var particle_color: ParticlePropertyVec4
+var particle_positions: FluidPropertyVec2
+var particle_velocities: FluidPropertyVec2
+var particle_previous_positions: FluidPropertyVec2
+var particle_color: FluidPropertyVec4
+var mug_particle_property: FluidPropertyVec2
 
-var mug_verticies: ParticlePropertyVec2
+var mug_verticies: FluidPropertyVec2
 
 var fluid_data: Image
 var fluid_data_texture: ImageTexture
@@ -107,17 +108,17 @@ func _setup_compute_shader() -> void:
 	fmt.format = RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
 	fmt.usage_bits = RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT | RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 
-	particle_positions = ParticlePropertyVec2.new(rd, fluid_pos, POSITIONS_BINDING)
-	particle_velocities = ParticlePropertyVec2.new(rd, fluid_vel, VELOCITY_BINDING)
-	particle_previous_positions = ParticlePropertyVec2.new(rd, predicted_pos, PREVIOUS_POSITIONS_BINDING)
-	particle_color = ParticlePropertyVec4.new(rd, fluid_color, COLOR_BINDING)
+	particle_positions = FluidPropertyVec2.new(rd, fluid_pos, POSITIONS_BINDING)
+	particle_velocities = FluidPropertyVec2.new(rd, fluid_vel, VELOCITY_BINDING)
+	particle_previous_positions = FluidPropertyVec2.new(rd, predicted_pos, PREVIOUS_POSITIONS_BINDING)
+	particle_color = FluidPropertyVec4.new(rd, fluid_color, COLOR_BINDING)
 	
 	var polygon: Array[Vector2] = []
 	for v in mug_collider.polygon:
 		polygon.append(v + mug_collider.get_parent().position)
 
-	var mug_particle_property = ParticlePropertyVec2.new(rd, polygon, MUG_COLLIDER_BINDING)
-	
+	mug_particle_property = FluidPropertyVec2.new(rd, polygon, MUG_COLLIDER_BINDING)
+
 	var view := RDTextureView.new()
 	fluid_data_buffer = rd.texture_create(fmt, view, [fluid_data.get_data()])
 	fluid_data_buffer_uniform = _generate_uniform(fluid_data_buffer, RenderingDevice.UNIFORM_TYPE_IMAGE, FLUID_DATA_BINDING)
@@ -182,6 +183,14 @@ func _spawn_particles():
 func _update_fluid_particles(delta):
 	if mouse_down:
 		_spawn_particles()
+
+	# update mug polygon location
+	var polygon: Array[Vector2] = []
+	for v in mug_collider.polygon:
+		polygon.append(mug_collider.get_parent().to_global(v))
+
+	mug_particle_property.replace_particles(polygon)
+
 	rd.free_rid(params_buffer)
 	
 	params_buffer = _generate_parameter_buffer(delta)
@@ -191,7 +200,7 @@ func _update_fluid_particles(delta):
 	
 	_run_compute_shader(fluid_pipeline)
 
-func _generate_parameter_buffer(delta):
+func _generate_parameter_buffer(_delta):
 	var params_buffer_bytes : PackedByteArray = PackedFloat32Array([
 		NUM_PARTICLES, 
 		IMAGE_SIZE,
@@ -221,7 +230,7 @@ func _run_compute_shader(pipeline):
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipeline)
 	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 0)
-	rd.compute_list_dispatch(compute_list, ceil(NUM_PARTICLES/1024.), 1, 1)
+	rd.compute_list_dispatch(compute_list, max(ceil(NUM_PARTICLES/1024.), 1), 1, 1)
 	rd.compute_list_end()
 	rd.submit()
 
@@ -233,7 +242,8 @@ func _generate_uniform(data_buffer, type, binding):
 	return data_uniform
 
 func _input(event):
-	if event is InputEventMouseButton:
+	# if event is InputEventMouseButton:
+	if event is InputEventKey:
 		mouse_down = 1 if event.pressed else 0
 
 func _exit_tree():

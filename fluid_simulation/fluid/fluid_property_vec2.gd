@@ -1,4 +1,4 @@
-class_name ParticlePropertyVec2
+class_name FluidPropertyVec2
 
 
 var _rd: RenderingDevice
@@ -14,12 +14,17 @@ func _init(rd: RenderingDevice, initial_values: Array[Vector2], uniform_binding:
 	buffer = _generate_vec2_buffer(initial_values)
 	uniform = _generate_uniform(buffer, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, _uniform_binding)
 
-func add_particles(particle: Array[Vector2]) -> void:
+func add_particles(particles: Array[Vector2]) -> void:
 	var buffer_data: PackedVector2Array = _bytes_to_packed_vector2_array(_rd.buffer_get_data(buffer))
 	_free_data()
 
-	buffer_data.append_array(particle)
+	buffer_data.append_array(particles)
 	buffer = _generate_vec2_buffer(buffer_data)
+	uniform.add_id(buffer)
+
+func replace_particles(particles: Array[Vector2]) -> void:
+	_free_data()
+	buffer = _generate_vec2_buffer(particles)
 	uniform.add_id(buffer)
 
 func _free_data() -> void:
@@ -38,7 +43,7 @@ func _bytes_to_packed_vector2_array(bytes: PackedByteArray) -> PackedVector2Arra
 
 func _generate_vec2_buffer(data):
 	var data_buffer_bytes := PackedVector2Array(data).to_byte_array()
-	var data_buffer = _rd.storage_buffer_create(data_buffer_bytes.size(), data_buffer_bytes)
+	var data_buffer = _rd.storage_buffer_create(max(data_buffer_bytes.size(), 1), data_buffer_bytes)
 	return data_buffer
 
 func _generate_uniform(data_buffer, type, binding):

@@ -12,7 +12,7 @@ shader_parameter/scale = Vector2(0.2, 0.8)
 
 [node name="Fluid" type="Node2D" parent="."]
 script = ExtResource("1_d5bfl")
-interaction_radius = 30.0
+interaction_radius = 20.0
 k = 4.0
 k_near = 10.0
 viscous_sigma = 0.9
@@ -21,10 +21,9 @@ viscous_sigma = 0.9
 process_material = SubResource("ShaderMaterial_0ghh0")
 texture = ExtResource("3_rkd3r")
 
-[node name="RigidBody2D" type="RigidBody2D" parent="."]
-position = Vector2(531, 464)
+[node name="StaticBody2D" type="StaticBody2D" parent="."]
+position = Vector2(598, 457)
 
-[node name="MugCollider" type="CollisionPolygon2D" parent="RigidBody2D"]
+[node name="MugCollider" type="CollisionPolygon2D" parent="StaticBody2D"]
 unique_name_in_owner = true
-position = Vector2(-41, 48)
 polygon = PackedVector2Array(-136, -185, -194, 117, 184, 120, 137, -183, 145, -77, 132, 103, -153, 102, -148, -68)

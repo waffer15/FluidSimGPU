@@ -1,0 +1,92 @@
+[gd_scene load_steps=12 format=3 uid="uid://c8adx6haucl3b"]
+
+[ext_resource type="Script" path="res://mug_controller.gd" id="1_0k0fs"]
+[ext_resource type="Texture2D" uid="uid://dlmr1vorue174" path="res://2d-mug.png" id="1_rs3mm"]
+[ext_resource type="Script" path="res://fluid_simulation/fluid_simulation.gd" id="3_8ao2c"]
+[ext_resource type="Shader" path="res://fluid_simulation/shaders/fluid_particle.gdshader" id="4_7tj2k"]
+[ext_resource type="Texture2D" uid="uid://cg0ws8d7uabph" path="res://white-dot.png" id="5_cwege"]
+[ext_resource type="Script" path="res://fluid_simulation/fluid/fluid.gd" id="6_meid7"]
+[ext_resource type="Script" path="res://fluid_simulation/fluid_emitter/fluid_emitter.gd" id="7_bb1rs"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_4ml8e"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_w0ry6"]
+size = Vector2(219, 199.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_icp4j"]
+size = Vector2(1179, 156)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xwyyy"]
+shader = ExtResource("4_7tj2k")
+shader_parameter/scale = Vector2(0.2, 0.8)
+
+[node name="Node2D" type="Node2D"]
+
+[node name="Mug" type="RigidBody2D" parent="."]
+position = Vector2(641, 314)
+physics_material_override = SubResource("PhysicsMaterial_4ml8e")
+script = ExtResource("1_0k0fs")
+
+[node name="MugCollider" type="CollisionPolygon2D" parent="Mug"]
+unique_name_in_owner = true
+polygon = PackedVector2Array(-108, -98, -106, 58, -102, 78, -89, 92, -71, 100, 37, 98, 54, 87, 65, 68, 66, 12, 89, 5, 105, -14, 108, -48, 95, -69, 77, -82, 66, -83, 66, -97, 45, -97, 45, 69, 34, 83, -73, 83, -92, 66, -92, -98)
+
+[node name="Sprite2D" type="Sprite2D" parent="Mug"]
+unique_name_in_owner = true
+texture = ExtResource("1_rs3mm")
+
+[node name="Draggable" type="Area2D" parent="Mug"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Mug/Draggable"]
+position = Vector2(1.5, -1.75)
+shape = SubResource("RectangleShape2D_w0ry6")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="."]
+position = Vector2(577, 621)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D"]
+shape = SubResource("RectangleShape2D_icp4j")
+
+[node name="Polygon2D" type="Polygon2D" parent="StaticBody2D"]
+position = Vector2(-588, -78)
+rotation = 0.00221866
+scale = Vector2(11.7508, 1.9796)
+color = Color(0.97, 0.84875, 0.7275, 1)
+polygon = PackedVector2Array(100, 0, 100, 100, 0, 100, 0, 0)
+
+[node name="Fluid" type="Node2D" parent="."]
+visible = false
+script = ExtResource("3_8ao2c")
+interaction_radius = 20.0
+k = 4.0
+k_near = 10.0
+viscous_sigma = 0.9
+
+[node name="FluidParticles" type="GPUParticles2D" parent="Fluid"]
+visible = false
+process_material = SubResource("ShaderMaterial_xwyyy")
+texture = ExtResource("5_cwege")
+
+[node name="FluidV2" type="Node2D" parent="."]
+script = ExtResource("6_meid7")
+
+[node name="FluidParticles" type="GPUParticles2D" parent="FluidV2"]
+process_material = SubResource("ShaderMaterial_xwyyy")
+texture = ExtResource("5_cwege")
+
+[node name="FluidEmitter" type="Node2D" parent="." node_paths=PackedStringArray("_fluid")]
+position = Vector2(325, 74)
+script = ExtResource("7_bb1rs")
+max_flow_rate = 10
+color = Color(0.561548, 0, 0.0476638, 1)
+_fluid = NodePath("../FluidV2")
+
+[node name="Node2D" type="Node2D" parent="FluidEmitter"]
+
+[node name="Node2D2" type="Node2D" parent="FluidEmitter"]
+position = Vector2(41, 0)
+
+[node name="Node2D3" type="Node2D" parent="FluidEmitter"]
+position = Vector2(-60, -60)
+
+[connection signal="input_event" from="Mug/Draggable" to="Mug" method="_on_draggable_input_event"]
